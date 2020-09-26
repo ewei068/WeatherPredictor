@@ -6,6 +6,7 @@ import pandas as pd
 import pickle
 import sklearn
 import math
+from acctester import main
 
 
 source = "10yrSOD.csv"
@@ -43,9 +44,9 @@ for index in range(len(predictions)):
     i = y_temp[index]
     try:
         next_input = []
-        next_input.append(i % 365)
+        next_input.append((i % 365) /365)
         for j in range(7):
-            humidity = float(source_df[i - j]["DailyAverageRelativeHumidity"])/ 100
+            humidity = float(source_df[i - j]["DailyAverageRelativeHumidity"]) / 100
             if math.isnan(humidity):
                 raise Exception("hi")
             else:
@@ -69,29 +70,74 @@ for index in range(len(predictions)):
         # outputs.append(y[index] - predictions[index])
     except:
         pass
-print(inputs)
-print(outputs)
+# print(inputs)
+# print(outputs)
 
 x_train, x_test, y_train, y_test = sklearn.model_selection.train_test_split(inputs, outputs, test_size=0.1)
 
+best_full_acc = 0
+best_l2 = 0
+best_l3 = 0
+
+for l2 in range(1,40):
+    for l3 in range(6,7):
+        accs = []
+        for _ in range(5):
+            tf.keras.backend.set_floatx('float64')
+            model = keras.Sequential([
+                keras.layers.Dense(29, input_dim=29, activation='linear'),
+                keras.layers.Dense(l2, input_dim=l2, activation='relu'),
+                keras.layers.Dense(l3, input_dim=l3, activation='softmax'),
+                keras.layers.Dense(1, activation='sigmoid')
+            ])
+            model.summary()
+
+            model.compile(optimizer='adam', loss='mean_squared_error', metrics=['accuracy'])
+
+            model.fit(x_train, y_train, batch_size=16, epochs=50)
+
+            prediction = model.predict(x_test)
+            # print(prediction)
+            # print(outputs)
+
+            test_loss, test_acc = model.evaluate(x_test, y_test)
+
+            print('Tested accuracy:', test_acc)
+
+            model.save('skew.h5')
+            accs.append(main())
+
+        full_acc = max(accs)
+
+        if full_acc > best_full_acc:
+            best_full_acc = full_acc
+            best_l2 = l2
+            best_l3 = l3
+            model.save('best_skew.h5')
+
+
+print(best_full_acc, best_l2, best_l3)
+
+'''
 tf.keras.backend.set_floatx('float64')
-model = keras.Sequential([
-    keras.layers.Dense(29, input_dim=29, activation='relu'),
-    keras.layers.Dense(5, input_dim=5, activation='relu'),
-    keras.layers.Dense(1, activation='sigmoid')
+    model = keras.Sequential([
+        keras.layers.Dense(29, input_dim=29, activation='linear'),
+        keras.layers.Dense(29, input_dim=29, activation='relu'),
+        keras.layers.Dense(5, input_dim=5, activation='softmax'),
+        keras.layers.Dense(1, activation='sigmoid')
     ])
-model.summary()
+    model.summary()
 
-model.compile(optimizer='adam', loss='mean_squared_error', metrics=['accuracy'])
+    model.compile(optimizer='adam', loss='mean_squared_error', metrics=['accuracy'])
 
-model.fit(x_train, y_train,batch_size = 16, epochs=50)
+    model.fit(x_train, y_train, batch_size=16, epochs=50)
 
-prediction = model.predict(x_test)
-print(prediction)
-print(outputs)
+    prediction = model.predict(x_test)
+    # print(prediction)
+    # print(outputs)
 
-test_loss, test_acc = model.evaluate(x_test, y_test)
+    test_loss, test_acc = model.evaluate(x_test, y_test)
 
-print('Tested accuracy:', test_acc)
+    print('Tested accuracy:', test_acc)
 
-model.save('skew.h5')
+    model.save('skew.h5')'''
